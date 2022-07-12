@@ -60,7 +60,7 @@ func GetUserMedia(constraints MediaStreamConstraints) (MediaStream, error) {
 	var videoConstraints, audioConstraints MediaTrackConstraints
 	if constraints.Video != nil {
 		constraints.Video(&videoConstraints)
-		tracker, err := selectVideo(videoConstraints, constraints.Codec)
+		tracker, err := selectVideo(&videoConstraints, constraints.Codec)
 		if err != nil {
 			cleanTrackers()
 			return nil, err
@@ -170,15 +170,16 @@ func selectAudio(constraints MediaTrackConstraints, selector *CodecSelector) (Tr
 
 	return newTrackFromDriver(d, c, selector)
 }
-func selectVideo(constraints MediaTrackConstraints, selector *CodecSelector) (Track, error) {
+func selectVideo(constraints *MediaTrackConstraints, selector *CodecSelector) (Track, error) {
 	typeFilter := driver.FilterVideoRecorder()
 	notScreenFilter := driver.FilterNot(driver.FilterDeviceType(driver.Screen))
 	filter := driver.FilterAnd(typeFilter, notScreenFilter)
 
-	d, c, err := selectBestDriver(filter, constraints)
+	d, c, err := selectBestDriver(filter, *constraints)
 	if err != nil {
 		return nil, err
 	}
+	constraints.selectedMedia = c.selectedMedia
 
 	return newTrackFromDriver(d, c, selector)
 }

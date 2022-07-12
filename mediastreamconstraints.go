@@ -17,3 +17,7 @@ type MediaTrackConstraints struct {
 }
 
 type MediaOption func(*MediaTrackConstraints)
+
+func (constraints *MediaTrackConstraints) SelectedMedia() prop.Media {
+	return constraints.selectedMedia
+}
