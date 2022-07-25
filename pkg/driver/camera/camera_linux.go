@@ -137,7 +137,7 @@ func newCamera(path string) *camera {
 }
 
 func (c *camera) log(msg string, args ...interface{}) {
-	log.Printf("[Camera %s]"+msg, append([]interface{}{c.path}, args...)...)
+	log.Printf("[Camera %s] "+msg, append([]interface{}{c.path}, args...)...)
 }
 
 func getCameraReadTimeout() uint32 {
@@ -201,7 +201,7 @@ func (c *camera) VideoRecord(p prop.Media) (video.Reader, error) {
 
 	pf := c.reversedFormats[p.FrameFormat]
 	c.log("Set FrameFormat and size: %s, %dx%d", p.FrameFormat, p.Width, p.Height)
-	actualPF, actualWidth, actualHeight, err = c.cam.SetImageFormat(pf, uint32(p.Width), uint32(p.Height))
+	actualPF, actualWidth, actualHeight, err := c.cam.SetImageFormat(pf, uint32(p.Width), uint32(p.Height))
 	if err != nil {
 		c.log("Error while setting image format: %s", err)
 		return nil, err
