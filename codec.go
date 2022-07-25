@@ -59,7 +59,7 @@ func (selector *CodecSelector) Populate(setting *webrtc.MediaEngine) {
 }
 
 // selectVideoCodecByNames selects a single codec that can be built and matched. codecNames can be formatted as "video/<codecName>" or "<codecName>"
-func (selector *CodecSelector) selectVideoCodecByNames(reader video.Reader, inputProp prop.Media, codecNames ...string) (codec.ReadCloser, *codec.RTPCodec, error) {
+func (selector *CodecSelector) selectVideoCodecByNames(reader video.Reader, inputProp prop.Media, sid string, codecNames ...string) (codec.ReadCloser, *codec.RTPCodec, error) {
 	var selectedEncoder codec.VideoEncoderBuilder
 	var encodedReader codec.ReadCloser
 	var errReasons []string
@@ -71,7 +71,7 @@ outer:
 		for _, encoder := range selector.videoEncoders {
 			// MimeType is formated as "video/<codecName>"
 			if strings.HasSuffix(strings.ToLower(encoder.RTPCodec().MimeType), wantCodecLower) {
-				encodedReader, err = encoder.BuildVideoEncoder(reader, inputProp)
+				encodedReader, err = encoder.BuildVideoEncoder(reader, inputProp, sid)
 				if err == nil {
 					selectedEncoder = encoder
 					break outer
@@ -89,14 +89,14 @@ outer:
 	return encodedReader, selectedEncoder.RTPCodec(), nil
 }
 
-func (selector *CodecSelector) selectVideoCodec(reader video.Reader, inputProp prop.Media, codecs ...webrtc.RTPCodecParameters) (codec.ReadCloser, *codec.RTPCodec, error) {
+func (selector *CodecSelector) selectVideoCodec(reader video.Reader, inputProp prop.Media, sid string, codecs ...webrtc.RTPCodecParameters) (codec.ReadCloser, *codec.RTPCodec, error) {
 	var codecNames []string
 
 	for _, codec := range codecs {
 		codecNames = append(codecNames, codec.MimeType)
 	}
 
-	return selector.selectVideoCodecByNames(reader, inputProp, codecNames...)
+	return selector.selectVideoCodecByNames(reader, inputProp, sid, codecNames...)
 }
 
 // selectAudioCodecByNames selects a single codec that can be built and matched. codecNames can be formatted as "audio/<codecName>" or "<codecName>"
