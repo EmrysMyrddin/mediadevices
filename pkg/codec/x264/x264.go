@@ -95,8 +95,9 @@ func newEncoder(r video.Reader, p prop.Media, params Params) (codec.ReadCloser, 
 	}
 
 	e := encoder{
-		engine: engine,
-		r:      video.ToI420(r),
+		engine:      engine,
+		r:           video.ToI420(r),
+		framesSince: time.Now(),
 	}
 	return &e, nil
 }

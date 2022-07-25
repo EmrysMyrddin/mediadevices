@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"image"
 	"io"
+	"log"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/pion/interceptor"
 	"github.com/pion/rtcp"
@@ -156,6 +158,10 @@ func (track *baseTrack) onError(err error) {
 	}
 }
 
+func (track *baseTrack) log(msg string, args ...interface{}) {
+	log.Printf("[Track %s]"+msg, append([]interface{}{track.ID()}, args...))
+}
+
 func (track *baseTrack) bind(ctx webrtc.TrackLocalContext, specializedTrack Track) (webrtc.RTPCodecParameters, error) {
 	track.mu.Lock()
 	defer track.mu.Unlock()
@@ -187,6 +193,7 @@ func (track *baseTrack) bind(ctx webrtc.TrackLocalContext, specializedTrack Trac
 		var doneCh chan<- struct{}
 		writer := ctx.WriteStream()
 		defer func() {
+			track.log("Write pump stopped")
 			close(stopRead)
 			encodedReader.Close()
 
@@ -197,6 +204,10 @@ func (track *baseTrack) bind(ctx webrtc.TrackLocalContext, specializedTrack Trac
 				close(doneCh)
 			}
 		}()
+
+		track.log("Write pump started")
+		nbFrames := 0
+		framesSince := time.Now()
 
 		for {
 			select {
@@ -211,6 +222,14 @@ func (track *baseTrack) bind(ctx webrtc.TrackLocalContext, specializedTrack Trac
 				return
 			}
 
+			nbFrames++
+			if nbFrames == 60 {
+				elapsedTime := time.Now().Sub(framesSince)
+				track.log("60 frames have been sent in %.3fs (%.1f FPS)", elapsedTime, float64(nbFrames)/elapsedTime.Seconds())
+				nbFrames = 0
+				framesSince = time.Now()
+			}
+
 			for _, pkt := range pkts {
 				_, err = writer.WriteRTP(&pkt.Header, pkt.Payload)
 				if err != nil {
@@ -223,8 +242,11 @@ func (track *baseTrack) bind(ctx webrtc.TrackLocalContext, specializedTrack Trac
 
 	keyFrameController, ok := encodedReader.Controller().(codec.KeyFrameController)
 	if ok {
+		track.log("KeyFrame control available, starting RTCP read pump")
 		stopRead = make(chan struct{})
 		go track.rtcpReadLoop(ctx.RTCPReader(), keyFrameController, stopRead)
+	} else {
+		track.log("KeyFrame control not available")
 	}
 
 	return selectedCodec, nil
@@ -259,7 +281,9 @@ readLoop:
 		for _, pkt := range pkts {
 			switch pkt.(type) {
 			case *rtcp.PictureLossIndication, *rtcp.FullIntraRequest:
+				track.log("PLI or FIR detected, should force key frame")
 				if err := keyFrameController.ForceKeyFrame(); err != nil {
+					track.log("Error while forcing key frame: err", err)
 					logger.Warnf("failed to force key frame: %s", err)
 					continue readLoop
 				}
