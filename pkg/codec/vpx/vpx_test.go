@@ -123,6 +123,7 @@ func TestImageSizeChange(t *testing.T) {
 								FrameFormat: frame.FormatI420,
 							},
 						},
+						"",
 					)
 					if err != nil {
 						t.Fatal(err)
@@ -184,6 +185,7 @@ func TestRequestKeyFrame(t *testing.T) {
 						FrameFormat: frame.FormatI420,
 					},
 				},
+				"",
 			)
 			if err != nil {
 				t.Fatal(err)
