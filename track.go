@@ -157,7 +157,7 @@ func (track *baseTrack) onError(err error) {
 }
 
 func (track *baseTrack) log(msg string, args ...interface{}) {
-	log.Printf("[Track %s]"+msg, append([]interface{}{track.ID()}, args...))
+	log.Printf("[Track %s]"+msg, append([]interface{}{track.ID()}, args...)...)
 }
 
 func (track *baseTrack) bind(ctx webrtc.TrackLocalContext, specializedTrack Track) (webrtc.RTPCodecParameters, error) {
@@ -223,7 +223,7 @@ func (track *baseTrack) bind(ctx webrtc.TrackLocalContext, specializedTrack Trac
 			nbFrames++
 			if nbFrames == 60 {
 				elapsedTime := time.Now().Sub(framesSince)
-				track.log("60 frames have been sent in %.3fs (%.1f FPS)", elapsedTime, float64(nbFrames)/elapsedTime.Seconds())
+				track.log("60 frames have been sent in %.3fs (%.1f FPS)", elapsedTime.Seconds(), float64(nbFrames)/elapsedTime.Seconds())
 				nbFrames = 0
 				framesSince = time.Now()
 			}
