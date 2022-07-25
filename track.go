@@ -157,7 +157,7 @@ func (track *baseTrack) onError(err error) {
 }
 
 func (track *baseTrack) log(msg string, args ...interface{}) {
-	log.Printf("[Track %s]"+msg, append([]interface{}{track.ID()}, args...)...)
+	log.Printf("[Track %s] "+msg, append([]interface{}{track.StreamID()}, args...)...)
 }
 
 func (track *baseTrack) bind(ctx webrtc.TrackLocalContext, specializedTrack Track) (webrtc.RTPCodecParameters, error) {
