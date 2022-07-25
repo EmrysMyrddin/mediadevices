@@ -109,7 +109,7 @@ type VideoEncoderBuilder interface {
 	// RTPCodec represents the codec metadata
 	RTPCodec() *RTPCodec
 	// BuildVideoEncoder builds video encoder by given media params and video input
-	BuildVideoEncoder(r video.Reader, p prop.Media) (ReadCloser, error)
+	BuildVideoEncoder(r video.Reader, p prop.Media, sid string) (ReadCloser, error)
 }
 
 // ReadCloser is an io.ReadCloser with a controller

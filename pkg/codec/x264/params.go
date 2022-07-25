@@ -45,6 +45,6 @@ func (p *Params) RTPCodec() *codec.RTPCodec {
 }
 
 // BuildVideoEncoder builds x264 encoder with given params
-func (p *Params) BuildVideoEncoder(r video.Reader, property prop.Media) (codec.ReadCloser, error) {
-	return newEncoder(r, property, *p)
+func (p *Params) BuildVideoEncoder(r video.Reader, property prop.Media, sid string) (codec.ReadCloser, error) {
+	return newEncoder(r, property, *p, sid)
 }

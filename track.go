@@ -405,7 +405,7 @@ func (track *VideoTrack) newEncodedReader(codecNames ...string) (EncodedReadClos
 		return nil, nil, err
 	}
 
-	encodedReader, selectedCodec, err := track.selector.selectVideoCodecByNames(reader, inputProp, codecNames...)
+	encodedReader, selectedCodec, err := track.selector.selectVideoCodecByNames(reader, inputProp, track.StreamID(), codecNames...)
 	if err != nil {
 		return nil, nil, err
 	}
