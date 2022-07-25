@@ -27,6 +27,7 @@ type encoder struct {
 	closed      bool
 	nbFrames    int
 	framesSince time.Time
+	log         func(msg string, args ...interface{})
 }
 
 type cerror int
@@ -83,14 +84,18 @@ func newEncoder(r video.Reader, p prop.Media, params Params) (codec.ReadCloser, 
 	param.rc.i_vbv_max_bitrate = param.rc.i_bitrate
 	param.rc.i_vbv_buffer_size = param.rc.i_vbv_max_bitrate * 2
 
-	log.Printf("[x264] Creating new encoder: %v", params)
+	logger := func(msg string, args ...interface{}) {
+		log.Printf("[x264 %s]"+msg, append([]interface{}{p.DeviceID}, args...)...)
+	}
+
+	logger("Creating new encoder: %v", params)
 
 	var rc C.int
 	// cPreset will be freed in C.enc_new
 	cPreset := C.CString(fmt.Sprint(params.Preset))
 	engine := C.enc_new(param, cPreset, &rc)
 	if err := errFromC(rc); err != nil {
-		log.Printf("[x264] Error while creating encoder: %s", err)
+		logger("Error while creating encoder: %s", err)
 		return nil, err
 	}
 
@@ -98,6 +103,7 @@ func newEncoder(r video.Reader, p prop.Media, params Params) (codec.ReadCloser, 
 		engine:      engine,
 		r:           video.ToI420(r),
 		framesSince: time.Now(),
+		log:         logger,
 	}
 	return &e, nil
 }
@@ -107,13 +113,13 @@ func (e *encoder) Read() ([]byte, func(), error) {
 	defer e.mu.Unlock()
 
 	if e.closed {
-		log.Println("[x264] Read on closed encoder")
+		e.log("Read on closed encoder")
 		return nil, func() {}, io.EOF
 	}
 
 	img, _, err := e.r.Read()
 	if err != nil {
-		log.Printf("[x264] Read error: %s", err)
+		e.log("Read error: %s", err)
 		return nil, func() {}, err
 	}
 	yuvImg := img.(*image.YCbCr)
@@ -127,14 +133,14 @@ func (e *encoder) Read() ([]byte, func(), error) {
 		&rc,
 	)
 	if err := errFromC(rc); err != nil {
-		log.Printf("[x264] econding error: %s", err)
+		e.log("econding error: %s", err)
 		return nil, func() {}, err
 	}
 
 	e.nbFrames++
 	if e.nbFrames == 60 {
 		elapsedTime := time.Now().Sub(e.framesSince)
-		log.Printf("[x264] 60 frames have been encoded in %.3fs (%.1ffps)", elapsedTime.Seconds(), float64(e.nbFrames)/elapsedTime.Seconds())
+		e.log("60 frames have been encoded in %.3fs (%.1ffps)", elapsedTime.Seconds(), float64(e.nbFrames)/elapsedTime.Seconds())
 		e.nbFrames = 0
 		e.framesSince = time.Now()
 	}
@@ -147,7 +153,7 @@ func (e *encoder) Read() ([]byte, func(), error) {
 //var _ codec.BitRateController = (*encoder)(nil)
 
 func (e *encoder) ForceKeyFrame() error {
-	log.Printf("[x264] Key frame forced")
+	e.log("Key frame forced")
 	e.engine.force_key_frame = C.int(1)
 	return nil
 }
@@ -161,11 +167,11 @@ func (e *encoder) Close() error {
 	defer e.mu.Unlock()
 
 	if e.closed {
-		log.Printf("[x264] Closing an already closed encoder")
+		e.log("Closing an already closed encoder")
 		return nil
 	}
 
-	log.Printf("[x264] Closing encoder")
+	e.log("Closing encoder")
 
 	var rc C.int
 	C.enc_close(e.engine, &rc)
