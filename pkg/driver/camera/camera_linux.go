@@ -137,8 +137,7 @@ func newCamera(path string) *camera {
 }
 
 func (c *camera) log(msg string, args ...interface{}) {
-
-	log.Printf("[Camera %s]"+msg, append([]interface{}{c.path}, args...))
+	log.Printf("[Camera %s]"+msg, append([]interface{}{c.path}, args...)...)
 }
 
 func getCameraReadTimeout() uint32 {
@@ -284,7 +283,7 @@ func (c *camera) VideoRecord(p prop.Media) (video.Reader, error) {
 			nbFrames++
 			if nbFrames == 60 {
 				elapsedTime := time.Now().Sub(framesSince)
-				c.log("60 frames have been read in %.3fs (%.1f FPS)", elapsedTime, float64(nbFrames)/elapsedTime.Seconds())
+				c.log("60 frames have been read in %.3fs (%.1f FPS)", elapsedTime.Seconds(), float64(nbFrames)/elapsedTime.Seconds())
 				nbFrames = 0
 				framesSince = time.Now()
 			}
