@@ -103,7 +103,7 @@ func (p *VP8Params) RTPCodec() *codec.RTPCodec {
 }
 
 // BuildVideoEncoder builds VP8 encoder with given params
-func (p *VP8Params) BuildVideoEncoder(r video.Reader, property prop.Media) (codec.ReadCloser, error) {
+func (p *VP8Params) BuildVideoEncoder(r video.Reader, property prop.Media, sid string) (codec.ReadCloser, error) {
 	return newEncoder(r, property, p.Params, C.ifaceVP8())
 }
 
@@ -130,7 +130,7 @@ func (p *VP9Params) RTPCodec() *codec.RTPCodec {
 }
 
 // BuildVideoEncoder builds VP9 encoder with given params
-func (p *VP9Params) BuildVideoEncoder(r video.Reader, property prop.Media) (codec.ReadCloser, error) {
+func (p *VP9Params) BuildVideoEncoder(r video.Reader, property prop.Media, sid string) (codec.ReadCloser, error) {
 	return newEncoder(r, property, p.Params, C.ifaceVP9())
 }
 

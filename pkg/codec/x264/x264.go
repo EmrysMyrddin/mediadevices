@@ -65,7 +65,7 @@ var (
 	errEncode        = fmt.Errorf("failed to encode")
 )
 
-func newEncoder(r video.Reader, p prop.Media, params Params) (codec.ReadCloser, error) {
+func newEncoder(r video.Reader, p prop.Media, params Params, sid string) (codec.ReadCloser, error) {
 	if params.KeyFrameInterval == 0 {
 		params.KeyFrameInterval = 60
 	}
@@ -85,7 +85,7 @@ func newEncoder(r video.Reader, p prop.Media, params Params) (codec.ReadCloser, 
 	param.rc.i_vbv_buffer_size = param.rc.i_vbv_max_bitrate * 2
 
 	logger := func(msg string, args ...interface{}) {
-		log.Printf("[x264 %s]"+msg, append([]interface{}{p.DeviceID}, args...)...)
+		log.Printf("[x264 %s] "+msg, append([]interface{}{sid}, args...)...)
 	}
 
 	logger("Creating new encoder: %v", params)
