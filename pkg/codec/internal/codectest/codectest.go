@@ -62,7 +62,7 @@ func VideoEncoderSimpleReadTest(t *testing.T, c codec.VideoEncoderBuilder, p pro
 			return nil, nil, io.EOF
 		}
 		return img, nil, nil
-	}), p)
+	}), p, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,7 @@ func AudioEncoderCloseTwiceTest(t *testing.T, c codec.AudioEncoderBuilder, p pro
 func VideoEncoderCloseTwiceTest(t *testing.T, c codec.VideoEncoderBuilder, p prop.Media) {
 	enc, err := c.BuildVideoEncoder(video.ReaderFunc(func() (image.Image, func(), error) {
 		return nil, nil, io.EOF
-	}), p)
+	}), p, "")
 	if err != nil {
 		t.Fatal(err)
 	}
