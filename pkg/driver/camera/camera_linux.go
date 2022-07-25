@@ -8,10 +8,12 @@ import (
 	"errors"
 	"image"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/blackjack/webcam"
 	"github.com/pion/mediadevices/pkg/driver"
@@ -134,6 +136,11 @@ func newCamera(path string) *camera {
 	return c
 }
 
+func (c *camera) log(msg string, args ...interface{}) {
+
+	log.Printf("[Camera %s]"+msg, append([]interface{}{c.path}, args...))
+}
+
 func getCameraReadTimeout() uint32 {
 	// default to 5 seconds
 	var readTimeoutSec uint32 = 5
@@ -152,6 +159,7 @@ func (c *camera) Open() error {
 	if err != nil {
 		return err
 	}
+	c.log("Camera open")
 
 	// Late frames should be discarded. Buffering should be handled in higher level.
 	cam.SetBufferCount(1)
@@ -161,10 +169,12 @@ func (c *camera) Open() error {
 
 func (c *camera) Close() error {
 	if c.cam == nil {
+		c.log("Closing camera while already closed")
 		return nil
 	}
 
 	if c.cancel != nil {
+		c.log("Canceling reader")
 		// Let the reader knows that the caller has closed the camera
 		c.cancel()
 		// Wait until the reader unref the buffer
@@ -177,40 +187,52 @@ func (c *camera) Close() error {
 		c.cam.StopStreaming()
 		c.cancel = nil
 	}
+	c.log("Closing camera")
 	c.cam.Close()
 	return nil
 }
 
 func (c *camera) VideoRecord(p prop.Media) (video.Reader, error) {
+	c.log("Create new recorder for media: %v", p)
 	decoder, err := frame.NewDecoder(p.FrameFormat)
 	if err != nil {
+		c.log("Error while creating decoder: %s", err)
 		return nil, err
 	}
 
 	pf := c.reversedFormats[p.FrameFormat]
-	_, _, _, err = c.cam.SetImageFormat(pf, uint32(p.Width), uint32(p.Height))
+	c.log("Set FrameFormat and size: %s, %dx%d", p.FrameFormat, p.Width, p.Height)
+	actualPF, actualWidth, actualHeight, err = c.cam.SetImageFormat(pf, uint32(p.Width), uint32(p.Height))
 	if err != nil {
+		c.log("Error while setting image format: %s", err)
 		return nil, err
 	}
+	c.log("Actual image format: %s, %dx%d", actualPF, actualWidth, actualHeight)
 
 	if p.FrameRate > 0 {
 		err = c.cam.SetFramerate(float32(p.FrameRate))
+		c.log("Frame Rate: %d", p.FrameRate)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	if err := c.cam.StartStreaming(); err != nil {
+		c.log("Error while starting streaming: %s", err)
 		return nil, err
 	}
+	c.log("Started streaming")
 
 	cam := c.cam
 
 	readTimeoutSec := getCameraReadTimeout()
+	c.log("Read timeout (time to wait for a new frame): %d", readTimeoutSec)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	c.cancel = cancel
 	var buf []byte
+	nbFrames := 0
+	framesSince := time.Now()
 	r := video.ReaderFunc(func() (img image.Image, release func(), err error) {
 		// Lock to avoid accessing the buffer after StopStreaming()
 		c.mutex.Lock()
@@ -227,14 +249,17 @@ func (c *camera) VideoRecord(p prop.Media) (video.Reader, error) {
 			switch err.(type) {
 			case nil:
 			case *webcam.Timeout:
+				c.log("Read timeout, take loo long to receive a frame from camera")
 				return nil, func() {}, errReadTimeout
 			default:
+				c.log("Error while waiting frame: %s", err)
 				// Camera has been stopped.
 				return nil, func() {}, err
 			}
 
 			b, err := cam.ReadFrame()
 			if err != nil {
+				c.log("Error while reading frame: %s", err)
 				// Camera has been stopped.
 				return nil, func() {}, err
 			}
@@ -242,6 +267,7 @@ func (c *camera) VideoRecord(p prop.Media) (video.Reader, error) {
 			// Frame is empty.
 			// Retry reading and return errEmptyFrame if it exceeds maxEmptyFrameCount.
 			if len(b) == 0 {
+				c.log("Frame read but was empty. Only %d consecutive empty frames allowed, %d remaining", maxEmptyFrameCount, maxEmptyFrameCount-i)
 				continue
 			}
 
@@ -254,8 +280,18 @@ func (c *camera) VideoRecord(p prop.Media) (video.Reader, error) {
 			// from this reader will be Go safe. Otherwise, it's possible that outside of this reader
 			// that this memory is still being used even after we close it.
 			n := copy(buf, b)
+
+			nbFrames++
+			if nbFrames == 60 {
+				elapsedTime := time.Now().Sub(framesSince)
+				c.log("60 frames have been read in %.3fs (%.1f FPS)", elapsedTime, float64(nbFrames)/elapsedTime.Seconds())
+				nbFrames = 0
+				framesSince = time.Now()
+			}
+
 			return decoder.Decode(buf[:n], p.Width, p.Height)
 		}
+		c.log("Too much consecutive empty frames")
 		return nil, func() {}, errEmptyFrame
 	})
 
