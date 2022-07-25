@@ -137,7 +137,7 @@ func newCamera(path string) *camera {
 }
 
 func (c *camera) log(msg string, args ...interface{}) {
-	log.Printf("[Camera %s]"+msg, append([]interface{}{c.path}, args...)...)
+	log.Printf("[Camera %s] "+msg, append([]interface{}{c.path}, args...)...)
 }
 
 func getCameraReadTimeout() uint32 {
