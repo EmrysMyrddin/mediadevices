@@ -138,9 +138,9 @@ func (e *encoder) Read() ([]byte, func(), error) {
 	}
 
 	e.nbFrames++
-	if e.nbFrames == 60 {
+	if e.nbFrames == 30*60*2 {
 		elapsedTime := time.Now().Sub(e.framesSince)
-		e.log("60 frames have been encoded in %.3fs (%.1ffps)", elapsedTime.Seconds(), float64(e.nbFrames)/elapsedTime.Seconds())
+		e.log("%d frames have been encoded in %.3fs (%.1ffps)", e.nbFrames, elapsedTime.Seconds(), float64(e.nbFrames)/elapsedTime.Seconds())
 		e.nbFrames = 0
 		e.framesSince = time.Now()
 	}
