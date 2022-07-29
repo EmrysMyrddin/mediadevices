@@ -288,9 +288,13 @@ func (c *camera) VideoRecord(p prop.Media) (video.Reader, error) {
 				framesSince = time.Now()
 			}
 
-			return decoder.Decode(buf[:n], p.Width, p.Height)
+			img, release, err = decoder.Decode(buf[:n], p.Width, p.Height)
+			if errors.Is(err, frame.DecoderError) {
+				continue
+			}
+			return img, release, err
 		}
-		c.log("Too much consecutive empty frames")
+		c.log("Too much consecutive empty undecodable frames")
 		return nil, func() {}, errEmptyFrame
 	})
 
