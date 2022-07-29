@@ -222,9 +222,9 @@ func (track *baseTrack) bind(ctx webrtc.TrackLocalContext, specializedTrack Trac
 			}
 
 			nbFrames++
-			if nbFrames == 60 {
+			if nbFrames == 30*60*2 {
 				elapsedTime := time.Now().Sub(framesSince)
-				track.log("60 frames have been sent in %.3fs (%.1f FPS)", elapsedTime.Seconds(), float64(nbFrames)/elapsedTime.Seconds())
+				track.log("%d frames have been sent in %.3fs (%.1f FPS)", nbFrames, elapsedTime.Seconds(), float64(nbFrames)/elapsedTime.Seconds())
 				nbFrames = 0
 				framesSince = time.Now()
 			}

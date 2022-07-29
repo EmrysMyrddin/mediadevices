@@ -281,9 +281,9 @@ func (c *camera) VideoRecord(p prop.Media) (video.Reader, error) {
 			n := copy(buf, b)
 
 			nbFrames++
-			if nbFrames == 60 {
+			if nbFrames == 30*60*2 {
 				elapsedTime := time.Now().Sub(framesSince)
-				c.log("60 frames have been read in %.3fs (%.1f FPS)", elapsedTime.Seconds(), float64(nbFrames)/elapsedTime.Seconds())
+				c.log("%d frames have been read in %.3fs (%.1f FPS)", nbFrames, elapsedTime.Seconds(), float64(nbFrames)/elapsedTime.Seconds())
 				nbFrames = 0
 				framesSince = time.Now()
 			}
