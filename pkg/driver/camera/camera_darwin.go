@@ -1,13 +1,14 @@
 package camera
 
 import (
-	"image"
-
+	"errors"
+	"fmt"
 	"github.com/pion/mediadevices/pkg/avfoundation"
 	"github.com/pion/mediadevices/pkg/driver"
 	"github.com/pion/mediadevices/pkg/frame"
 	"github.com/pion/mediadevices/pkg/io/video"
 	"github.com/pion/mediadevices/pkg/prop"
+	"image"
 )
 
 type camera struct {
@@ -15,6 +16,10 @@ type camera struct {
 	session *avfoundation.Session
 	rcClose func()
 }
+
+var (
+	maxDecodeErrors = 3
+)
 
 func init() {
 	devices, err := avfoundation.Devices(avfoundation.Video)
@@ -62,11 +67,19 @@ func (cam *camera) VideoRecord(property prop.Media) (video.Reader, error) {
 	}
 	cam.rcClose = rc.Close
 	r := video.ReaderFunc(func() (image.Image, func(), error) {
-		frame, _, err := rc.Read()
-		if err != nil {
-			return nil, func() {}, err
+		var err error
+		var frameBuffer []byte
+		for i := 0; i < maxDecodeErrors; i++ {
+			frameBuffer, _, err = rc.Read()
+			if err != nil {
+				if errors.Is(err, frame.DecoderError) {
+					continue // ignore decoder errors
+				}
+				return nil, func() {}, err
+			}
+			return decoder.Decode(frameBuffer, property.Width, property.Height)
 		}
-		return decoder.Decode(frame, property.Width, property.Height)
+		return nil, nil, fmt.Errorf("too many decoder errors: %w", err)
 	})
 	return r, nil
 }
