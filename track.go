@@ -24,6 +24,7 @@ import (
 
 const (
 	rtpOutboundMTU = 1200
+	rtcpInboundMTU = 1500
 )
 
 var (
@@ -242,8 +243,12 @@ func (track *baseTrack) bind(ctx webrtc.TrackLocalContext, specializedTrack Trac
 	if ok {
 		track.log("KeyFrame control available, starting RTCP read pump")
 		stopRead = make(chan struct{})
+		readerBuffer := make([]byte, rtcpInboundMTU)
 		go func() {
 			reader := ctx.RTCPReader()
+			defer func() {
+				track.Close()
+			}()
 			for {
 				select {
 				case <-stopRead:
@@ -251,7 +256,6 @@ func (track *baseTrack) bind(ctx webrtc.TrackLocalContext, specializedTrack Trac
 				default:
 				}
 
-				var readerBuffer []byte
 				_, _, err := reader.Read(readerBuffer, interceptor.Attributes{})
 				if err != nil {
 					track.onError(err)
