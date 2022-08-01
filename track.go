@@ -24,6 +24,7 @@ import (
 
 const (
 	rtpOutboundMTU = 1200
+	rtcpInboundMTU = 1500
 )
 
 var (
@@ -242,42 +243,45 @@ func (track *baseTrack) bind(ctx webrtc.TrackLocalContext, specializedTrack Trac
 	if ok {
 		track.log("KeyFrame control available, starting RTCP read pump")
 		stopRead = make(chan struct{})
-		go func() {
-			reader := ctx.RTCPReader()
-			for {
-				select {
-				case <-stopRead:
-					return
-				default:
-				}
-
-				var readerBuffer []byte
-				_, _, err := reader.Read(readerBuffer, interceptor.Attributes{})
-				if err != nil {
-					track.onError(err)
-					return
-				}
-
-				pkts, err := rtcp.Unmarshal(readerBuffer)
-
-				for _, pkt := range pkts {
-					switch pkt.(type) {
-					case *rtcp.PictureLossIndication, *rtcp.FullIntraRequest:
-						track.log("PLI or FIR detected, should force key frame")
-						if err := keyFrameController.ForceKeyFrame(); err != nil {
-							track.log("Error while forcing key frame: err", err)
-							track.onError(err)
-							return
-						}
-					}
-				}
-			}
-		}()
+		go track.rtcpReadLoop(ctx.RTCPReader(), keyFrameController, stopRead)
 	} else {
 		track.log("KeyFrame control not available")
 	}
 
 	return selectedCodec, nil
+}
+
+func (track *baseTrack) rtcpReadLoop(reader interceptor.RTCPReader, keyFrameController codec.KeyFrameController, stopRead chan struct{}) {
+	readerBuffer := make([]byte, rtcpInboundMTU)
+	for {
+		select {
+		case <-stopRead:
+			return
+		default:
+		}
+
+		readLength, _, err := reader.Read(readerBuffer, interceptor.Attributes{})
+		if err != nil {
+			track.onError(err)
+			return
+		}
+
+		pkts, err := rtcp.Unmarshal(readerBuffer[:readLength])
+		if err != nil {
+			logger.Warnf("failed to unmarshal rtcp packet: %s", err)
+		}
+
+		for _, pkt := range pkts {
+			switch pkt.(type) {
+			case *rtcp.PictureLossIndication, *rtcp.FullIntraRequest:
+				track.log("PLI or FIR detected, should force key frame")
+				if err := keyFrameController.ForceKeyFrame(); err != nil {
+					track.log("Error while forcing key frame: err", err)
+					logger.Warnf("failed to force key frame: %s", err)
+				}
+			}
+		}
+	}
 }
 
 func (track *baseTrack) unbind(ctx webrtc.TrackLocalContext) error {
