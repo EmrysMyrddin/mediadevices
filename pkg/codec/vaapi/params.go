@@ -118,6 +118,6 @@ func (p *ParamsVP9) RTPCodec() *codec.RTPCodec {
 }
 
 // BuildVideoEncoder builds VP9 encoder with given params
-func (p *ParamsVP9) BuildVideoEncoder(r video.Reader, property prop.Media) (codec.ReadCloser, error) {
+func (p *ParamsVP9) BuildVideoEncoder(r video.Reader, property prop.Media, sid string) (codec.ReadCloser, error) {
 	return newVP9Encoder(r, property, *p)
 }
